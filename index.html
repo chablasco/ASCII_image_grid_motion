@@ -2,97 +2,115 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>CB ASCII Image Grid Effect</title>
+  <title>CB ASCII Image Grid Rotation</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-    canvas {
-      display: block;
-    }
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
   </style>
 </head>
 <body>
-  <script>
-    let img;
-    let asciiChars = "▐░▒▓▔▔▊▋▌▍▎▏"; // Characters for mapping brightness
-    let cols, rows;
-    let charWidth = 6, charHeight = 10; // Approximate size of each character in pixels
-    let angle = 0.0; // Global rotation angle
-    let gridSize = 4; // 4x4 grid
-    let font;
+<script>
+let img;
+const asciiChars = "▐░▒▓▔▔▊▋▌▍▎▏"; // Characters for mapping brightness
+const asciiLen = asciiChars.length;
+let cols, rows;
+const charWidth = 6, charHeight = 10; // Approximate size of each character in pixels
+let angle = 0.0; // Global rotation angle
+const gridSize = 4; // 4x4 grid
+let font;
+const globalAngleIncrement = Math.PI / 1028;
 
-    function preload() {
-      font = loadFont("assets/IBMPlexMono-Regular.otf"); // Load the font (ensure it's in an "assets" folder)
-      img = loadImage("assets/Dolmen.jpg"); // Load the image
-    }
+function preload() {
+  font = loadFont("assets/IBMPlexMono-Regular.otf"); // Load the font (ensure it's in the assets folder)
+  img = loadImage("assets/Dolmen.jpg"); // Load the image
+}
 
-    function setup() {
-      createCanvas(windowWidth, windowHeight, WEBGL); // Use WEBGL for transformations
-      img.resize(1128, 1128); // Resize image for consistent results
-      cols = floor(img.width / charWidth);
-      rows = floor(img.height / charHeight);
-      textFont(font);
-      textSize(10);
-      textAlign(CENTER, CENTER);
-      frameRate(24);
-    }
+function setup() {
+  createCanvas(windowWidth, windowHeight, WEBGL); // Use WEBGL for 3D transformations
+  img.resize(1128, 1128); // Resize image for consistent results
+  img.loadPixels(); // Preload image pixels for fast access
 
-    function draw() {
-      background(0);
-      let segmentWidth = width / gridSize;
-      let segmentHeight = height / gridSize;
+  cols = floor(img.width / charWidth);
+  rows = floor(img.height / charHeight);
+  
+  textFont(font);
+  textSize(10);
+  textAlign(CENTER, CENTER);
+  frameRate(24);
+}
 
-      for (let gridX = 0; gridX < gridSize; gridX++) {
-        for (let gridY = 0; gridY < gridSize; gridY++) {
-          push();
-
-          // Translate to the center of the current grid segment
-          translate(gridX * segmentWidth + segmentWidth / 2 - width / 2, 
-                    gridY * segmentHeight + segmentHeight / 2 - height / 2);
-
-          // Use Perlin noise to add individual rotation and scaling per cell
-          let n = noise(gridX * 5.5, gridY * 5.2, frameCount * 0.02);
-          let cellRotation = map(n, 0, 1, -PI / 1, PI / 1);
-          let cellScale = map(n, 0, 1, 0.8, 1.2);
-
-          // Apply transformations
-          rotateX(angle + cellRotation);
-          scale(cellScale);
-
-          // Translate back to top-left of the segment for ASCII drawing
-          translate(-segmentWidth / 2, -segmentHeight / 2);
-
-          // Loop through ASCII positions in this segment
-          for (let i = 0; i < cols / gridSize; i++) {
-            for (let j = 0; j < rows / gridSize; j++) {
-              let x = gridX * segmentWidth + i * charWidth;
-              let y = gridY * segmentHeight + j * charHeight;
-
-              // Sample the image color and get brightness
-              let c = img.get(x, y);
-              let b = brightness(c);
-
-              // Map brightness to ASCII character
-              let charIndex = int(map(b, 0, 255, asciiChars.length - 1, 0));
-              fill(255);
-              text(asciiChars.charAt(charIndex), i * charWidth + charWidth / 2, j * charHeight + charHeight / 2);
-            }
-          }
-
-          pop();
+function draw() {
+  background(0);
+  
+  // Precompute segment dimensions
+  const segW = width / gridSize;
+  const segH = height / gridSize;
+  // Calculate the number of ASCII cells per grid segment (constant for all cells)
+  const cellsX = floor(cols / gridSize);
+  const cellsY = floor(rows / gridSize);
+  
+  // Loop through each grid cell
+  for (let gridX = 0; gridX < gridSize; gridX++) {
+    for (let gridY = 0; gridY < gridSize; gridY++) {
+      push();
+      // Translate to the center of the current grid segment
+      translate(
+        gridX * segW + segW / 2 - width / 2, 
+        gridY * segH + segH / 2 - height / 2
+      );
+      
+      // Use Perlin noise to add individual rotation and scaling per cell
+      let n = noise(gridX * 5.5, gridY * 5.2, frameCount * 0.02);
+      let cellRotation = map(n, 0, 1, -PI, PI);
+      let cellScale = map(n, 0, 1, 0.8, 1.2);
+      
+      // Apply combined transformations
+      rotateX(angle + cellRotation);
+      scale(cellScale);
+      
+      // Translate back to top-left of the segment for ASCII drawing
+      translate(-segW / 2, -segH / 2);
+      
+      // Loop through ASCII positions in this segment
+      for (let i = 0; i < cellsX; i++) {
+        for (let j = 0; j < cellsY; j++) {
+          // Compute global canvas coordinates for sampling the image
+          let x = gridX * segW + i * charWidth;
+          let y = gridY * segH + j * charHeight;
+          
+          // Get brightness from the preloaded pixels array
+          let b = getImageBrightness(x, y);
+          let charIndex = int(map(b, 0, 255, asciiLen - 1, 0));
+          fill(255);
+          text(asciiChars.charAt(charIndex), i * charWidth + charWidth / 2, j * charHeight + charHeight / 2);
         }
       }
-
-      // Increment global angle for rotation
-      angle += PI / 1028;
+      
+      pop();
     }
+  }
+  
+  // Increment the global angle for continuous rotation
+  angle += globalAngleIncrement;
+}
 
-    function windowResized() {
-      resizeCanvas(windowWidth, windowHeight);
-    }
-  </script>
+// Optimized brightness sampler using the preloaded pixel array
+function getImageBrightness(x, y) {
+  // Constrain coordinates and convert to integer indices
+  let ix = constrain(floor(x), 0, img.width - 1);
+  let iy = constrain(floor(y), 0, img.height - 1);
+  let index = (ix + iy * img.width) * 4;
+  let r = img.pixels[index];
+  let g = img.pixels[index + 1];
+  let b = img.pixels[index + 2];
+  // Return perceived brightness using standard luminosity formula
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+</script>
 </body>
 </html>
