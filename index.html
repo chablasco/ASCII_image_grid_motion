@@ -108,7 +108,7 @@ function draw() {
       
       // Use Perlin noise with millis() for smooth, continuous variation.
       let n = noise(gx * 5.5, gy * 5.2, millis() * 0.0002);
-      let cellRotation = map(n, 0, 1, -PI/2, PI/2);
+      let cellRotation = map(n, 0, 1, -PI, PI);
       let cellScale = map(n, 0, 1, 0.8, 1.2);
       
       // Apply per-cell rotation and scaling, combined with the global angle.
@@ -125,7 +125,7 @@ function draw() {
   }
   
   // Update the global angle using deltaTime for frame-independent motion.
-  angle += (PI / 1028) * (deltaTime / (1000 / 7));
+  angle += (PI / 1028) * (deltaTime / (1000 / 700));
 }
 
 function windowResized() {
