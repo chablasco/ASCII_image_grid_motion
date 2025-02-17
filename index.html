@@ -107,7 +107,7 @@ function draw() {
       translate(gx * segW + segW / 2 - width / 2, gy * segH + segH / 2 - height / 2);
       
       // Use Perlin noise with millis() for smooth, continuous variation.
-      let n = noise(gx * 5.5, gy * 5.2, millis() * 0.008);
+      let n = noise(gx * 5.5, gy * 5.2, millis() * 0.0008);
       let cellRotation = map(n, 0, 1, -PI, PI);
       let cellScale = map(n, 0, 1, 0.8, 1.2);
       
