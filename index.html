@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>ASCII Image Grid Effect</title>
+  <title>CB ASCII Image Grid Motion</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
@@ -19,68 +19,64 @@ const charWidth = 6, charHeight = 10; // Approximate size of each character in p
 let angle = 0.0; // Global rotation angle
 const gridSize = 4; // 4x4 grid
 let font;
-let gridBuffers = []; // 2D array to hold off-screen buffers
+let gridBuffers = []; // Offscreen buffers for each grid cell
 
 // These will be computed in createGridBuffers():
 let segW, segH, cellsX, cellsY;
 
 function preload() {
-  font = loadFont("assets/IBMPlexMono-Regular.otf"); // Ensure font is in "assets" folder
+  font = loadFont("assets/IBMPlexMono-Regular.otf"); // Ensure the font is in the "assets" folder
   img = loadImage("assets/Dolmen.jpg"); // Load the image
 }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight, WEBGL); // Use WEBGL for 3D transforms
-  // Resize the image to a known size for consistent sampling
-  img.resize(1128, 1128);
-  img.loadPixels(); // Preload pixel array for fast brightness sampling
-  
-  // Compute number of ASCII columns/rows from image dimensions
+  createCanvas(windowWidth, windowHeight, WEBGL); // Use WEBGL for 3D transformations
+  smooth();
+  img.resize(1128, 1128); // Resize image for consistent results
+  img.loadPixels(); // Preload pixels for fast access
+
   cols = floor(img.width / charWidth);
   rows = floor(img.height / charHeight);
-  
+
   textFont(font);
   textSize(10);
   textAlign(CENTER, CENTER);
-  frameRate(24);
-  
-  // Precompute the ASCII grid for each cell into offscreen buffers
+  frameRate(60); // Increase frame rate for smoother motion
+
   createGridBuffers();
 }
 
 function createGridBuffers() {
   gridBuffers = [];
-  // Determine the size of each grid cell (in canvas pixels)
+  // Determine size of each grid cell (canvas pixels)
   segW = width / gridSize;
   segH = height / gridSize;
-  // Determine number of ASCII characters per grid cell
-  cellsX = floor((cols) / gridSize);
-  cellsY = floor((rows) / gridSize);
-  
-  // For each grid cell, create an offscreen graphics buffer and pre-render its ASCII grid.
+  // Determine number of ASCII cells per grid cell
+  cellsX = floor(cols / gridSize);
+  cellsY = floor(rows / gridSize);
+
+  // For each grid cell, create an offscreen buffer and render its ASCII grid.
   for (let gx = 0; gx < gridSize; gx++) {
     gridBuffers[gx] = [];
     for (let gy = 0; gy < gridSize; gy++) {
       let pg = createGraphics(segW, segH);
-      pg.pixelDensity(1); // Ensure 1:1 pixel density for faster rendering
+      pg.pixelDensity(1); // Keep pixel density at 1 for faster rendering
       pg.background(0);
       pg.textFont(font);
       pg.textSize(10);
       pg.textAlign(CENTER, CENTER);
-      
-      // For each ASCII position in this cell:
+
+      // Render the ASCII grid into this buffer.
       for (let i = 0; i < cellsX; i++) {
         for (let j = 0; j < cellsY; j++) {
           // Map grid cell + local ASCII cell to a global coordinate in the image.
           let globalX = gx * segW + i * charWidth;
           let globalY = gy * segH + j * charHeight;
-          
-          // Sample brightness from the image.
+
           let b = getImageBrightness(globalX, globalY);
           let charIndex = int(map(b, 0, 255, asciiLen - 1, 0));
           let asciiChar = asciiChars.charAt(charIndex);
           pg.fill(255);
-          // Draw the character centered in its cell.
           pg.text(asciiChar, i * charWidth + charWidth / 2, j * charHeight + charHeight / 2);
         }
       }
@@ -89,7 +85,7 @@ function createGridBuffers() {
   }
 }
 
-// Fast brightness calculation using the preloaded pixel array.
+// Fast brightness sampler using preloaded pixels.
 function getImageBrightness(x, y) {
   let ix = constrain(floor(x), 0, img.width - 1);
   let iy = constrain(floor(y), 0, img.height - 1);
@@ -103,22 +99,24 @@ function getImageBrightness(x, y) {
 function draw() {
   background(0);
   
-  // Loop through each grid cell (4x4)
+  // Loop through each grid cell
   for (let gx = 0; gx < gridSize; gx++) {
     for (let gy = 0; gy < gridSize; gy++) {
       push();
-      // Translate to the center of the current grid cell.
-      translate(gx * segW + segW/2 - width/2, gy * segH + segH/2 - height/2);
+      // Translate to the center of the grid cell (adjust for WEBGL center)
+      translate(gx * segW + segW / 2 - width / 2, gy * segH + segH / 2 - height / 2);
       
-      // Use Perlin noise to add per-cell rotation and scaling.
-      let n = noise(gx * 5.5, gy * 5.2, frameCount * 0.02);
+      // Use Perlin noise with millis() for smooth, continuous variation.
+      let n = noise(gx * 5.5, gy * 5.2, millis() * 0.0002);
       let cellRotation = map(n, 0, 1, -PI, PI);
       let cellScale = map(n, 0, 1, 0.8, 1.2);
       
-      // Apply the combined transformations.
+      // Apply per-cell rotation and scaling, combined with the global angle.
       rotateX(angle + cellRotation);
       scale(cellScale);
-      translate(-segW/2, -segH/2);
+      
+      // Translate back to the top-left corner of the grid cell.
+      translate(-segW / 2, -segH / 2);
       
       // Draw the pre-rendered ASCII grid for this cell.
       image(gridBuffers[gx][gy], 0, 0);
@@ -126,13 +124,13 @@ function draw() {
     }
   }
   
-  // Increment the global rotation angle.
-  angle += PI / 1028;
+  // Update the global angle using deltaTime for frame-independent motion.
+  angle += (PI / 1028) * (deltaTime / (1000 / 60));
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight, WEBGL);
-  createGridBuffers(); // Recompute buffers on window resize.
+  createGridBuffers(); // Recreate buffers when window is resized.
 }
 </script>
 </body>
