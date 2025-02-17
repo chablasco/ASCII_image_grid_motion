@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CB ASCII Image Grid Effect</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    let img;
+    let asciiChars = "▐░▒▓▔▔▊▋▌▍▎▏"; // Characters for mapping brightness
+    let cols, rows;
+    let charWidth = 6, charHeight = 10; // Approximate size of each character in pixels
+    let angle = 0.0; // Global rotation angle
+    let gridSize = 4; // 4x4 grid
+    let font;
+
+    function preload() {
+      font = loadFont("assets/IBMPlexMono-Regular.otf"); // Load the font (ensure it's in an "assets" folder)
+      img = loadImage("assets/Dolmen.jpg"); // Load the image
+    }
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight, WEBGL); // Use WEBGL for transformations
+      img.resize(1128, 1128); // Resize image for consistent results
+      cols = floor(img.width / charWidth);
+      rows = floor(img.height / charHeight);
+      textFont(font);
+      textSize(10);
+      textAlign(CENTER, CENTER);
+      frameRate(24);
+    }
+
+    function draw() {
+      background(0);
+      let segmentWidth = width / gridSize;
+      let segmentHeight = height / gridSize;
+
+      for (let gridX = 0; gridX < gridSize; gridX++) {
+        for (let gridY = 0; gridY < gridSize; gridY++) {
+          push();
+
+          // Translate to the center of the current grid segment
+          translate(gridX * segmentWidth + segmentWidth / 2 - width / 2, 
+                    gridY * segmentHeight + segmentHeight / 2 - height / 2);
+
+          // Use Perlin noise to add individual rotation and scaling per cell
+          let n = noise(gridX * 5.5, gridY * 5.2, frameCount * 0.02);
+          let cellRotation = map(n, 0, 1, -PI / 1, PI / 1);
+          let cellScale = map(n, 0, 1, 0.8, 1.2);
+
+          // Apply transformations
+          rotateX(angle + cellRotation);
+          scale(cellScale);
+
+          // Translate back to top-left of the segment for ASCII drawing
+          translate(-segmentWidth / 2, -segmentHeight / 2);
+
+          // Loop through ASCII positions in this segment
+          for (let i = 0; i < cols / gridSize; i++) {
+            for (let j = 0; j < rows / gridSize; j++) {
+              let x = gridX * segmentWidth + i * charWidth;
+              let y = gridY * segmentHeight + j * charHeight;
+
+              // Sample the image color and get brightness
+              let c = img.get(x, y);
+              let b = brightness(c);
+
+              // Map brightness to ASCII character
+              let charIndex = int(map(b, 0, 255, asciiChars.length - 1, 0));
+              fill(255);
+              text(asciiChars.charAt(charIndex), i * charWidth + charWidth / 2, j * charHeight + charHeight / 2);
+            }
+          }
+
+          pop();
+        }
+      }
+
+      // Increment global angle for rotation
+      angle += PI / 1028;
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+</html>
