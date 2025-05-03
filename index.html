@@ -128,6 +128,10 @@ function draw() {
   angle += (PI / 1028) * (deltaTime / (1000 / 500));
 }
 
+function mousePressed() {
+  fullscreen(!fullscreen());
+    }
+
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight, WEBGL);
   createGridBuffers(); // Recreate buffers when window is resized.
